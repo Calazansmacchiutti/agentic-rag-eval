@@ -14,6 +14,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
+from evals import juiz as juiz_mod
 from evals import oraculos
 
 RAIZ = Path(__file__).resolve().parents[1]
@@ -83,7 +84,8 @@ def _respondedor_real():
     return type("RespondedorReal", (), {"responder": staticmethod(responder)})()
 
 
-def rodar(*, stub: bool = False) -> dict:
+def rodar(*, stub: bool = False, com_juiz: bool = True) -> dict:
+    """Duas camadas: oraculo deterministico em tudo, juiz LLM so no que foi respondido."""
     itens = oraculos.carregar_golden(GOLDEN)
     respondedor = RespondedorStub(_carregar_corpus()) if stub else _respondedor_real()
 
@@ -94,24 +96,43 @@ def rodar(*, stub: bool = False) -> dict:
         respostas.append({
             "id": item.id, "pergunta": item.pergunta, "decisao": decisao,
             "resposta": texto[:400], "n_contextos": len(contextos),
+            # guardado para o juiz; nao entra no relatorio impresso
+            "contextos_texto": [c.get("text", "") for c in contextos],
         })
 
-    resumo = oraculos.resumir(resultados)
-    return {
+    relatorio = {
         "modo": "stub" if stub else "llm",
-        "resumo": resumo,
+        "resumo": oraculos.resumir(resultados),
         "itens": [asdict(r) for r in resultados],
-        "respostas": respostas,
+        "respostas": [{k: v for k, v in r.items() if k != "contextos_texto"} for r in respostas],
     }
+
+    if com_juiz:
+        selecionados = juiz_mod.selecionar_para_juiz(itens, resultados, respostas)
+        juiz = juiz_mod.JuizStub() if stub else juiz_mod.JuizLLM()
+        j = juiz.julgar(selecionados)
+        j.n_pulados = len(itens) - len(selecionados)
+        relatorio["juiz"] = {
+            "metricas": {k: round(v, 4) for k, v in j.metricas.items()},
+            "grader_model": j.grader_model,
+            "scorer": j.scorer,
+            "n_julgados": j.n_julgados,
+            "n_pulados_por_serem_recusa": j.n_pulados,
+            "itens": [asdict(i) for i in j.itens],
+        }
+
+    return relatorio
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Eval harness: oraculos deterministicos + juiz LLM.")
     ap.add_argument("--stub", action="store_true", help="sem LLM (piso deterministico, roda em CI)")
+    ap.add_argument("--sem-juiz", action="store_true",
+                    help="so os oraculos deterministicos (nao gasta chamada de LLM)")
     ap.add_argument("--json", metavar="ARQUIVO", help="grava o relatorio completo")
     args = ap.parse_args()
 
-    rel = rodar(stub=args.stub)
+    rel = rodar(stub=args.stub, com_juiz=not args.sem_juiz)
     r = rel["resumo"]
     print(f"modo: {rel['modo']} | {r['passaram']}/{r['total']} itens ({r['taxa_geral']:.0%})\n")
     print(f"{'categoria':<22} {'passaram':>10} {'taxa':>8}")
@@ -126,6 +147,15 @@ def main() -> int:
 
     if r["houve_vazamento"]:
         print(f"\n*** VAZAMENTO DE ESCOPO em {r['vazamentos']} - reprova o conjunto ***")
+
+    if "juiz" in rel:
+        j = rel["juiz"]
+        print(f"\njuiz ({j['scorer']} / {j['grader_model']}): {j['n_julgados']} julgados, "
+              f"{j['n_pulados_por_serem_recusa']} pulados por serem recusa")
+        for k, v in sorted(j["metricas"].items()):
+            print(f"  {k:<20} {v:.3f}")
+        if j["scorer"] == "stub":
+            print("  (stub: valores fixos, NAO sao medicao de qualidade)")
 
     if args.json:
         Path(args.json).write_text(json.dumps(rel, ensure_ascii=False, indent=1), encoding="utf-8")

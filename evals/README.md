@@ -50,11 +50,34 @@ que trava essa propriedade do corpus.
 Nenhum dado é real. Os números são internamente consistentes para que cada pergunta tenha
 resposta inequívoca.
 
+## O juiz LLM
+
+Depois dos oráculos, o harness roda o juiz — **apenas nos itens que foram respondidos**.
+
+Recusa não vai a julgamento. Ela já foi verificada exatamente pelo oráculo (a decisão bateu ou
+não bateu); pedir a um LLM que opine sobre a qualidade de *"não encontrei base para responder"*
+gasta chamada e não acrescenta informação. Na rodada atual são **15 julgados e 3 pulados**.
+
+Resposta que **reprovou** no oráculo continua indo ao juiz: saber *quão* ruim ficou a resposta
+errada é diagnóstico útil.
+
+A rubrica **não é reescrita aqui** — `evals/juiz.py` importa `_JUDGE_PROMPT`, `_FAITH_MAP`,
+`_RELEV_MAP` e `_precision` de `agentic_rag.evaluate`. Duplicar o texto criaria duas rubricas
+que divergem em silêncio, e a comparação entre rodadas passaria a medir a diferença entre elas
+em vez do sistema. O acoplamento é proposital, está declarado no módulo e há um teste que trava
+a identidade dos objetos.
+
+Toda métrica sai com **proveniência junto** (`scorer` + `grader_model`), pela mesma razão do
+ADR 0005: métrica sem proveniência não é comparável entre rodadas — uma troca de juiz se
+passaria por ganho do sistema. O `JuizStub` se identifica como `scorer="stub"` e imprime um
+aviso, para que seus números nunca sejam confundidos com medição real.
+
 ## Como rodar
 
 ```bash
 python -m evals.harness --stub      # sem LLM, sem Qdrant, sem chave — roda em CI
-python -m evals.harness             # sistema real
+python -m evals.harness             # sistema real (oráculos + juiz)
+python -m evals.harness --sem-juiz  # só oráculos: não gasta chamada de LLM
 python -m evals.harness --json relatorio.json
 ```
 
@@ -82,14 +105,22 @@ Duas conclusões que este piso entrega de graça:
 
 O baseline existe para que "o LLM melhorou" seja uma afirmação verificável, não uma impressão.
 
-## Relação com o eval anterior
+## Relação com `evaluate.py`
 
-`src/agentic_rag/evaluate.py` continua responsável pelas métricas de **qualidade de resposta**
-(faithfulness, answer relevancy, context precision) com juiz LLM calibrado, e pelo gate de
-promoção contra `models/baseline_metrics.json`. Ele não foi substituído.
+Os dois convivem, com papéis distintos:
 
-Este harness cobre o que aquele não cobria: **comportamento de recusa e isolamento**. São
-camadas complementares — uma mede qualidade, a outra mede garantia.
+| | `evaluate.py` | `evals/harness.py` |
+|---|---|---|
+| Conjunto | `data/eval_set.jsonl` (17 perguntas sobre o próprio projeto) | `evals/golden_set.jsonl` (18 casos, domínio financeiro) |
+| Mede | qualidade da resposta | **garantia**: recusa, escopo — e qualidade, via o mesmo juiz |
+| Gate | promoção contra `models/baseline_metrics.json` | falha ou vazamento reprova |
+
+A **rubrica do juiz é uma só**, morando em `evaluate.py` e importada pelo harness. Os
+`scorer` names coincidem (`llm_judge_score`), então os baselines dos dois são comparáveis
+entre si quando o `grader_model` for o mesmo.
+
+O que este harness acrescenta e aquele não cobria: **comportamento de recusa e isolamento de
+escopo**.
 
 ## Limitações conhecidas
 
@@ -99,5 +130,9 @@ camadas complementares — uma mede qualidade, a outra mede garantia.
   em troca de uma checagem sem modelo.
 - O stub não é modelo nem baseline competitivo: é piso. Comparação justa contra um RAG
   ingênuo exigiria o mesmo retriever vetorial sem o loop agentic.
-- O juiz LLM ainda não foi integrado a este harness — hoje ele vive em `evaluate.py`. Unificar
-  os dois é trabalho pendente.
+- O `baseline_deterministico.json` cobre **só a camada de oráculos**. As métricas do juiz
+  ainda não têm baseline versionado neste harness — o gate de promoção segue em `evaluate.py`,
+  contra `models/baseline_metrics.json`.
+- O juiz nunca foi executado sobre o corpus financeiro com LLM real: os números de juiz que
+  aparecem hoje vêm do `JuizStub` e **não são medição de qualidade**. Rodar `--stub` sem a
+  flag produz valores fixos, marcados como tal na saída.
