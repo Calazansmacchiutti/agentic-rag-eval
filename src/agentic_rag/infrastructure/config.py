@@ -8,8 +8,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     llm_model: str = "claude-opus-4-8"        # geracao/raciocinio
-    grader_model: str = "claude-opus-4-8"     # eval; troque p/ claude-haiku-4-5 p/ baratear
-    grader_temperature: float = 0.0           # juiz determinístico-first (ADR 0005): baixa variância
+    # Juiz: haiku-4-5 e o modelo do baseline versionado (models/baseline_metrics.json) e
+    # ACEITA `temperature`, que o ADR 0005 usa como knob de determinismo. Cuidado ao trocar:
+    # a familia Opus 4.7+ REJEITA `temperature` com 400 ("deprecated for this model"). Se
+    # apontar o juiz para um desses, defina tambem `grader_temperature=None`.
+    grader_model: str = "claude-haiku-4-5"
+    grader_temperature: float | None = 0.0    # None = nao envia o parametro
     max_output_tokens: int = 4096
     vector_db_url: str = "http://localhost:6333"
     top_k: int = 5                            # trechos recuperados por busca (knob de precisao/recall)

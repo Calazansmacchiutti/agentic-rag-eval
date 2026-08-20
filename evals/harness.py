@@ -20,6 +20,7 @@ from evals import oraculos
 RAIZ = Path(__file__).resolve().parents[1]
 GOLDEN = RAIZ / "evals" / "golden_set.jsonl"
 CORPUS = RAIZ / "data" / "financeiro" / "corpus.jsonl"
+COLLECTION_FINANCEIRA = "financeiro"   # ver scripts/seed_financeiro.py
 
 
 def _carregar_corpus() -> list[dict]:
@@ -65,12 +66,20 @@ class RespondedorStub:
 
 
 def _respondedor_real():
-    """Liga no caso de uso de verdade (precisa de chave e Qdrant no ar)."""
+    """Liga no caso de uso de verdade (precisa de chave e Qdrant no ar).
+
+    Aponta para a collection `financeiro`, nao para a padrao: este golden set so faz sentido
+    sobre o corpus financeiro. Usar a collection padrao recuperaria trecho do corpus do
+    projeto e as metricas mediriam contaminacao (ver scripts/seed_financeiro.py).
+    """
+    from agentic_rag.adapters.outbound.qdrant_retriever import RecuperacaoQdrant
     from agentic_rag.domain.entities import Escopo
     from agentic_rag.domain.use_cases import responder_pergunta as uc
     from agentic_rag.infrastructure.container import servicos
+    from agentic_rag.retriever import Retriever
 
     s = servicos()
+    s.recuperacao = RecuperacaoQdrant(Retriever(collection=COLLECTION_FINANCEIRA))
 
     def responder(item: oraculos.ItemGolden):
         r = uc.responder(

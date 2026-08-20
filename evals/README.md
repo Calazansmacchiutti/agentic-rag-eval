@@ -56,7 +56,8 @@ Depois dos oráculos, o harness roda o juiz — **apenas nos itens que foram res
 
 Recusa não vai a julgamento. Ela já foi verificada exatamente pelo oráculo (a decisão bateu ou
 não bateu); pedir a um LLM que opine sobre a qualidade de *"não encontrei base para responder"*
-gasta chamada e não acrescenta informação. Na rodada atual são **15 julgados e 3 pulados**.
+gasta chamada e não acrescenta informação. Na rodada com LLM real são **10 julgados e 8
+pulados** — quase metade do golden set nunca chega ao juiz, e isso é economia deliberada.
 
 Resposta que **reprovou** no oráculo continua indo ao juiz: saber *quão* ruim ficou a resposta
 errada é diagnóstico útil.
@@ -83,6 +84,47 @@ python -m evals.harness --json relatorio.json
 
 Saída de processo: **1** se houver qualquer falha **ou** qualquer vazamento. Vazamento reprova
 sozinho, independentemente da taxa geral — é falha de segurança, não de qualidade.
+
+## Resultado com LLM real (`evals/baseline.json`)
+
+Rodado em 2026-08-20 contra Qdrant local e Claude real. Modelo de resposta `claude-opus-4-8`,
+juiz `claude-opus-4-8`, prompt versão `d8def792448c`.
+
+| Categoria | Piso (stub) | **LLM real** |
+|---|---|---|
+| `fundamentada` | 7/9 | **9/9** |
+| `sem_suporte` | **0/3** | **3/3** |
+| `fora_de_politica` | 3/3 | 3/3 |
+| `fora_de_escopo` | 2/3 | **3/3** |
+| **Total** | 12/18 (67%) | **18/18 (100%)** |
+| Vazamentos | 0 | **0** |
+
+Métricas do juiz sobre os **10 itens respondidos** (8 pulados por serem recusa):
+
+| Métrica | Valor |
+|---|---|
+| faithfulness | **1,000** |
+| answer relevancy | **1,000** |
+| context precision | **0,243** |
+
+**O que esses números dizem — e o que não dizem.**
+
+O ganho que importa está em `sem_suporte`: **0/3 → 3/3**. É a evidência direta de que recusar
+exige compreensão, não busca — o piso por palavra-chave sempre achava algo e respondia.
+
+`faithfulness 1,000` significa que o juiz não encontrou afirmação sem lastro nos 10 itens. Com
+n=10 isso é ausência de defeito observado, não garantia estatística.
+
+**`context_precision 0,243` é o número honesto aqui**, e não é defeito de qualidade: o
+`top_k=5` traz cinco trechos e a maioria das perguntas se responde com um. Precisão de contexto
+mede ruído do retrieval, e cai por construção quando o corpus é pequeno e as perguntas são
+pontuais. É o mesmo padrão do baseline anterior (0,279) — ver ADR 0005, onde reranking foi
+testado em A/B e desligado por não render.
+
+**Ressalva de proveniência:** `claude-opus-4-8` rejeita `temperature` (400 *"deprecated for
+this model"*); o gateway detecta e repete sem o parâmetro. O determinismo do juiz previsto no
+ADR 0005 fica por conta do modelo, não de temperatura baixa — só comparar com rodadas na mesma
+condição. Está registrado em `baseline.json`.
 
 ## O baseline determinístico
 
@@ -133,6 +175,8 @@ escopo**.
 - O `baseline_deterministico.json` cobre **só a camada de oráculos**. As métricas do juiz
   ainda não têm baseline versionado neste harness — o gate de promoção segue em `evaluate.py`,
   contra `models/baseline_metrics.json`.
-- O juiz nunca foi executado sobre o corpus financeiro com LLM real: os números de juiz que
-  aparecem hoje vêm do `JuizStub` e **não são medição de qualidade**. Rodar `--stub` sem a
-  flag produz valores fixos, marcados como tal na saída.
+- `n=10` itens julgados é pouco para tratar `faithfulness 1,000` como garantia — é ausência
+  de defeito observado nessa amostra, não intervalo de confiança.
+- O baseline do juiz ainda **não é um gate**: `evals/baseline.json` registra o resultado, mas
+  o harness não reprova por queda de métrica do juiz (só por falha de oráculo ou vazamento).
+  Ligar o gate exige mais de uma rodada para estimar a variância.

@@ -128,6 +128,23 @@ def test_golden_invalido_da_erro_com_linha():
             oraculos.carregar_golden(p)
 
 
+def test_termo_proibido_nunca_aparece_na_propria_pergunta():
+    """Trava um erro de desenho que ja aconteceu de verdade.
+
+    O q10 ("rentabilidade em 2019?") tinha `nao_pode_conter: ["2019"]`. Uma recusa correta
+    ecoa o ano da pergunta ao explicar que nao ha dado - e o oraculo acusava VAZAMENTO num
+    comportamento perfeito. Termo proibido serve para dado de OUTRO escopo, nunca para
+    palavra que o usuario acabou de escrever.
+    """
+    for i in oraculos.carregar_golden(harness.GOLDEN):
+        pergunta = oraculos._normalizar(i.pergunta)
+        for termo in i.nao_pode_conter:
+            assert oraculos._normalizar(termo) not in pergunta, (
+                f"{i.id}: '{termo}' esta na propria pergunta; uma recusa correta vai eco-lo "
+                "e o oraculo acusaria vazamento falso"
+            )
+
+
 def test_corpus_financeiro_tem_duas_gestoras_para_testar_escopo():
     corpus = harness._carregar_corpus()
     gestoras = {d["gestora"] for d in corpus}

@@ -1,22 +1,52 @@
 # Agentic RAG + Eval Harness
 
-<p align="center">
-  <img src="docs/diagrams/arch-1.svg" alt="Arquitetura: RAG agentic + eval e estruturador de PDF multi-agente" width="820">
-</p>
+```mermaid
+flowchart TB
+  core["SDK Anthropic (Claude) + structured output (Pydantic)<br/>orcamento &lt;= 2 chamadas de LLM por item"]
 
-<p align="center"><sub>Visão geral. Diagramas detalhados (loop do Agente A, Agente B) em <a href="docs/architecture.md">docs/architecture.md</a>.</sub></p>
+  subgraph RAG["RAG agentic com fundamentacao auditavel"]
+    Q([pergunta + escopo]) --> GIN{"guardrail de entrada<br/>pedido de recomendacao?"}
+    GIN -- barra --> REC(["recusa com motivo<br/>0 chamadas de LLM"])
+    GIN -- segue --> AG["caso de uso: responder<br/>retrieve - reason - answer - self-check"]
+    AG <--> RET["recuperacao<br/>Qdrant + filtro de escopo"]
+    AG --> GOUT{"guardrail de saida<br/>citacao valida?"}
+    GOUT -- nao --> REC
+    GOUT -- sim --> OK(["resposta + fontes"])
+    REC --> AUD[("trilha de auditoria<br/>append-only")]
+    OK --> AUD
+  end
+
+  subgraph PDFS["Estruturador de PDF (multi-agente)"]
+    P([PDF]) --> PROBE["probe deterministico"]
+    PROBE --> A["Agente A<br/>chunking adaptativo"]
+    PROBE --> B["Agente B<br/>extracao de campos"]
+  end
+
+  EV["eval harness<br/>oraculos + juiz"] -.-> AG
+  core -.-> RAG
+  core -.-> PDFS
+```
+
+<p align="center"><sub>Visão geral. Fluxo detalhado, camadas (ports &amp; adapters) e o eval em duas camadas em <a href="docs/architecture.md">docs/architecture.md</a>.</sub></p>
 
 Sistema de RAG **agentic** (multi-agente) com **eval harness automatizado**, stack vendor-agnóstico
 e orçamento de custo/latência. Reescrita pública e sanitizada de uma plataforma de curadoria e
 geração de conteúdo que projetei e levei à produção.
 
+Em cima disso há uma **camada de garantia para contexto regulado**: guardrails que recusam sem
+lastro, escopo aplicado na recuperação (o trecho fora do escopo nunca chega ao modelo), trilha
+de auditoria append-only e travas de orçamento do agente. Ver
+[`docs/GOVERNANCA_IA.md`](docs/GOVERNANCA_IA.md).
+
 Inclui também um **estruturador de PDF multi-agente** (`src/agentic_rag/pdf/`): um probe
 determinístico que entende o comportamento de cada PDF, mais dois agentes (chunking adaptativo
 para RAG e extração de campos), com loop eval-driven. Ver [ADR 0004](docs/adr/0004-estruturador-pdf-probe-deterministico-loop-eval.md).
 
-> Status: pipeline funcionando ponta a ponta. 69 testes verdes; estruturador de PDF validado
-> ao vivo (indexação + busca filtrada no Qdrant); eval harness já rodado com LLM real e
-> baseline versionado em `models/baseline_metrics.json` (ver [Resultados](#resultados)).
+> Status: pipeline funcionando ponta a ponta. **112 testes verdes**; estruturador de PDF
+> validado ao vivo (indexação + busca filtrada no Qdrant); **dois** evals já rodados com LLM
+> real e baseline versionado — qualidade em `models/baseline_metrics.json` e garantia
+> (recusa + isolamento de escopo) em `evals/baseline.json`, com **18/18 e zero vazamentos**
+> (ver [Resultados](#resultados)).
 
 ## Problema
 Respostas de LLM sobre uma base de documentos precisam ser **fiéis, rastreáveis e baratas**.
@@ -88,8 +118,32 @@ Bordas pesadas/não-determinísticas (rodar o agente, pontuar) entram por injeç
 (ver `tests/test_evaluate.py`).
 
 ## Resultados
-Baseline versionado atual (`models/baseline_metrics.json`), medido sobre os 17 itens do golden
-set (`data/eval_set.jsonl`) com o juiz `claude-haiku-4-5`, 1 chamada de avaliação por item:
+
+São **dois** evals, medindo coisas diferentes: um mede **qualidade** da resposta, o outro mede
+**garantia** (recusa correta e isolamento de escopo).
+
+### 1. Garantia — `evals/baseline.json`
+Golden set de 18 casos sobre corpus financeiro sintético de duas gestoras
+(`data/financeiro/corpus.jsonl`), com Claude real:
+
+| Categoria | Piso sem LLM | **Com LLM** |
+|---|---|---|
+| `fundamentada` (responde com o número certo) | 7/9 | **9/9** |
+| `sem_suporte` (recusa quando falta lastro) | **0/3** | **3/3** |
+| `fora_de_politica` (recusa recomendação) | 3/3 | 3/3 |
+| `fora_de_escopo` (não vaza entre gestoras) | 2/3 | **3/3** |
+| **Total** | 12/18 | **18/18** · **0 vazamentos** |
+
+O número que importa é `sem_suporte` **0/3 → 3/3**: um piso por casamento de palavra sempre
+acha algo e responde. **Recusar exige compreensão, não busca** — e é isso que o LLM agrega.
+
+O isolamento de escopo, ao contrário, **não depende do modelo**: zero vazamentos já no piso,
+porque a restrição acontece na recuperação, antes de qualquer LLM. Metodologia e ressalvas em
+[`evals/README.md`](evals/README.md).
+
+### 2. Qualidade — `models/baseline_metrics.json`
+Medido sobre os 17 itens do golden set (`data/eval_set.jsonl`) com o juiz `claude-haiku-4-5`,
+1 chamada de avaliação por item:
 
 | Métrica | Valor |
 |---|---|
@@ -129,7 +183,19 @@ sinal de medição é o erro que este projeto existe pra evitar.
 Ainda não medidos: custo por consulta e p95 de latência.
 
 ## Arquitetura
-Ver [`docs/architecture.md`](docs/architecture.md) (diagrama) e os ADRs em [`docs/adr/`](docs/adr/).
+O domínio não conhece fornecedor: `domain/` define entidades, regras e **portas**;
+`adapters/outbound/` implementa cada porta (Anthropic, Qdrant, trilha em JSONL); a fiação mora
+em `infrastructure/container.py`. Trocar de LLM ou de banco vetorial é escrever um adapter —
+nenhum arquivo de domínio muda. É o que permite testar a regra inteira com dublês, **sem rede,
+sem Qdrant e sem chave** (`tests/test_use_case_responder.py`).
+
+O prompt vive em [`prompts/system.md`](prompts/system.md), fora do código, e sua **versão é o
+hash do conteúdo** — gravada em cada registro de auditoria, então dá para saber meses depois
+qual texto produziu qual resposta.
+
+Diagramas (fluxo de uma pergunta, camadas, eval em duas camadas) em
+[`docs/architecture.md`](docs/architecture.md); decisões em [`docs/adr/`](docs/adr/);
+garantias e não-garantias em [`docs/GOVERNANCA_IA.md`](docs/GOVERNANCA_IA.md).
 
 ## Como rodar
 ```bash

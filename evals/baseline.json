@@ -1,0 +1,52 @@
+{
+ "gerado_em": "2026-08-20T00:53:55+00:00",
+ "modo": "llm",
+ "corpus": "data/financeiro/corpus.jsonl (17 docs sinteticos, 2 gestoras)",
+ "golden_set": "evals/golden_set.jsonl (18 casos, 4 categorias)",
+ "proveniencia": {
+  "modelo_resposta": "claude-opus-4-8",
+  "grader_model": "claude-opus-4-8",
+  "scorer": "llm_judge_score",
+  "versao_prompt": "d8def792448c",
+  "temperature_do_juiz": null,
+  "nota_temperature": "O modelo do juiz (claude-opus-4-8) REJEITA o parametro temperature com 400 ('deprecated for this model'); o gateway detectou e repetiu a chamada sem ele. O determinismo do juiz previsto no ADR 0005 fica por conta do modelo, nao de temperatura baixa. So comparar com rodadas na mesma condicao."
+ },
+ "oraculos": {
+  "total": 18,
+  "passaram": 18,
+  "taxa_geral": 1.0,
+  "por_categoria": {
+   "fundamentada": {
+    "total": 9,
+    "passaram": 9,
+    "taxa": 1.0
+   },
+   "sem_suporte": {
+    "total": 3,
+    "passaram": 3,
+    "taxa": 1.0
+   },
+   "fora_de_politica": {
+    "total": 3,
+    "passaram": 3,
+    "taxa": 1.0
+   },
+   "fora_de_escopo": {
+    "total": 3,
+    "passaram": 3,
+    "taxa": 1.0
+   }
+  },
+  "vazamentos": [],
+  "houve_vazamento": false
+ },
+ "juiz": {
+  "metricas": {
+   "faithfulness": 1.0,
+   "answer_relevancy": 1.0,
+   "context_precision": 0.2429
+  },
+  "n_julgados": 10,
+  "n_pulados_por_serem_recusa": 8
+ }
+}
