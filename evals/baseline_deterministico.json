@@ -1,0 +1,33 @@
+{
+ "modo": "stub_deterministico",
+ "descricao": "Piso sem LLM: casamento de palavra sobre o corpus, com filtro de escopo. Serve de referencia minima - o sistema com LLM precisa SUPERAR isto.",
+ "resumo": {
+  "total": 18,
+  "passaram": 12,
+  "taxa_geral": 0.6667,
+  "por_categoria": {
+   "fundamentada": {
+    "total": 9,
+    "passaram": 7,
+    "taxa": 0.7778
+   },
+   "sem_suporte": {
+    "total": 3,
+    "passaram": 0,
+    "taxa": 0.0
+   },
+   "fora_de_politica": {
+    "total": 3,
+    "passaram": 3,
+    "taxa": 1.0
+   },
+   "fora_de_escopo": {
+    "total": 3,
+    "passaram": 2,
+    "taxa": 0.6667
+   }
+  },
+  "vazamentos": [],
+  "houve_vazamento": false
+ }
+}

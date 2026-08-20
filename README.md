@@ -7,8 +7,8 @@
 <p align="center"><sub>Visão geral. Diagramas detalhados (loop do Agente A, Agente B) em <a href="docs/architecture.md">docs/architecture.md</a>.</sub></p>
 
 Sistema de RAG **agentic** (multi-agente) com **eval harness automatizado**, stack vendor-agnóstico
-e orçamento de custo/latência. Reescrita pública e sanitizada de uma plataforma que projetei e
-levei à produção (curadoria/geração de provas) na ESPM.
+e orçamento de custo/latência. Reescrita pública e sanitizada de uma plataforma de curadoria e
+geração de conteúdo que projetei e levei à produção.
 
 Inclui também um **estruturador de PDF multi-agente** (`src/agentic_rag/pdf/`): um probe
 determinístico que entende o comportamento de cada PDF, mais dois agentes (chunking adaptativo
