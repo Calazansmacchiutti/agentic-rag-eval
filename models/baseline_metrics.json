@@ -1,0 +1,9 @@
+{
+  "grader_model": "claude-haiku-4-5",
+  "metrics": {
+    "answer_relevancy": 0.8235294117647058,
+    "context_precision": 0.27899159663865547,
+    "faithfulness": 0.8823529411764706
+  },
+  "scorer": "llm_judge_score"
+}

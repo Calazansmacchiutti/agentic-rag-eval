@@ -1,0 +1,17 @@
+{"question": "Qual e o orcamento de chamadas de LLM por item?", "ground_truth": "No maximo 2 chamadas de LLM por item: uma rodada de retrieval (tool search) mais a resposta estruturada final."}
+{"question": "Que banco vetorial e qual modelo de embeddings o projeto usa?", "ground_truth": "Qdrant como banco vetorial, com embeddings do sentence-transformers all-MiniLM-L6-v2 (384 dimensoes) e similaridade de cosseno."}
+{"question": "Como o agente decide quando buscar contexto?", "ground_truth": "Segue um loop de tool-use: o proprio modelo decide chamar a tool search para recuperar contexto antes de responder."}
+{"question": "O que e o baseline do projeto e como ele funciona?", "ground_truth": "Um RAG ingenuo: 1 retrieval de top-k fixo mais 1 chamada de LLM, sem loop de tool-use e sem self-check."}
+{"question": "Quais metricas o eval harness usa?", "ground_truth": "Faithfulness, answer relevancy e context precision."}
+{"question": "Quais scorers de avaliacao o projeto oferece?", "ground_truth": "Um juiz Claude nativo (default) e o ragas (opt-in), atras da mesma interface de Scorer."}
+{"question": "Como o juiz LLM foi estabilizado para reduzir variancia?", "ground_truth": "Temperatura baixa, rubrica analitica com escala discreta de 3 pontos para faithfulness e relevancy, e context precision deterministica por contexto."}
+{"question": "Como o baseline evita que uma troca de rubrica pareca um ganho do modelo?", "ground_truth": "O baseline grava a proveniencia (scorer e grader_model); se ela divergir da rodada, a comparacao e tratada como incomparavel."}
+{"question": "Como o estruturador de PDF esta organizado?", "ground_truth": "E multi-agente: um probe deterministico mais o Agente A (chunking adaptativo) e o Agente B (extracao de campos)."}
+{"question": "Que sinais o probe deterministico de PDF le?", "ground_truth": "Sinais de layout como tamanhos de fonte, blocos, tabelas, sumario/TOC, densidade de texto e multi-coluna, para derivar um DocProfile."}
+{"question": "Como o Agente A pontua a qualidade do recorte de chunks?", "ground_truth": "Score que equilibra cobertura (0.30), autocontido (0.30), integridade de fronteira (0.20), tamanho (0.10) e coerencia topica (0.10)."}
+{"question": "Como o Agente B trata um campo obrigatorio ausente?", "ground_truth": "Faz uma segunda passada focada nas paginas que mencionam o campo; se ainda assim ausente, o valor fica null (page grounding, anti-alucinacao)."}
+{"question": "Qual e o provider de LLM padrao e qual e a alternativa?", "ground_truth": "O padrao e o SDK da Anthropic (Claude); a alternativa e o LiteLLM como escape hatch para outros providers."}
+{"question": "Como o agente evita contexto duplicado entre as buscas?", "ground_truth": "Um curador deterministico deduplica trechos de texto repetidos entre rodadas antes de acumula-los, a custo zero de LLM."}
+{"question": "Qual e a capital da Franca?", "ground_truth": "Nao consta no corpus.", "adversarial": true}
+{"question": "Qual a acuracia do modelo de deteccao de fraude do projeto?", "ground_truth": "Nao consta no corpus; o projeto nao trata de deteccao de fraude.", "adversarial": true}
+{"question": "Quantos usuarios simultaneos o sistema suporta em producao?", "ground_truth": "Nao consta no corpus.", "adversarial": true}
