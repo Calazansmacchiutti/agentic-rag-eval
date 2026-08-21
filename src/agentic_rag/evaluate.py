@@ -13,8 +13,9 @@ por injecao (answer_fn, scorer). Os testes passam fakes e nao tocam LLM/Qdrant/r
 Imports pesados adiados como no resto do projeto.
 """
 import json
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -109,7 +110,7 @@ def ragas_score(records: list[EvalRecord]) -> dict[str, float]:
     Isolado atras da interface Scorer: o resto do harness e deterministico e testavel
     sem chamar ragas nem rede.
     """
-    from datasets import Dataset  # noqa: PLC0415  (dep transitiva do ragas)
+    from datasets import Dataset
     from ragas import evaluate
     from ragas.metrics import answer_relevancy, context_precision, faithfulness
 

@@ -110,9 +110,10 @@ def segment(blocks: list[Block], profile: DocProfile, plan: CutPlan) -> list[Seg
         pages.append(b.page)
 
         # atingiu o alvo em estrategias de empacotamento -> fecha
-        if plan.strategy in ("by_block", "table_aware", "by_section"):
-            if sum(len(x) for x in buf) >= plan.target_chars:
-                flush()
+        if plan.strategy in ("by_block", "table_aware", "by_section") and sum(
+            len(x) for x in buf
+        ) >= plan.target_chars:
+            flush()
 
     flush()
     _apply_overlap(segments, plan.overlap_chars)

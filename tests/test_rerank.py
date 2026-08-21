@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 """Testes do reranking sem carregar o cross-encoder (mockado) nem tocar Qdrant."""
 import numpy as np
 
@@ -49,7 +51,9 @@ def test_retriever_search_recupera_pool_maior_e_chama_reranker(monkeypatch):
     captured = {}
 
     class _Res:
-        points = [type("P", (), {"payload": {"text": f"t{i}"}, "score": 1.0})() for i in range(20)]
+        points: ClassVar[list] = [
+            type("P", (), {"payload": {"text": f"t{i}"}, "score": 1.0})() for i in range(20)
+        ]
 
     class _Cli:
         def query_points(self, **kw):
@@ -72,7 +76,7 @@ def test_retriever_search_sem_rerank_usa_top_k(monkeypatch):
     captured = {}
 
     class _Res:
-        points = []
+        points: ClassVar[list] = []
 
     class _Cli:
         def query_points(self, **kw):

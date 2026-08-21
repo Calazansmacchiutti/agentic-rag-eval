@@ -34,7 +34,7 @@ def test_naive_faz_um_retrieval_e_uma_chamada(monkeypatch):
 def test_prompt_lida_com_contexto_vazio(monkeypatch):
     prompts = []
     monkeypatch.setattr(llm_mod, "complete", lambda prompt, **k: prompts.append(prompt) or "nao sei")
-    text, contexts = baseline.answer_question("q", FakeRetriever([]))
+    _text, contexts = baseline.answer_question("q", FakeRetriever([]))
 
     assert contexts == []
     assert "(sem resultados)" in prompts[0]

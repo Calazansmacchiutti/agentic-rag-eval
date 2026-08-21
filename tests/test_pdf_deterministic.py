@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 """Testes deterministicos do estruturador de PDF (sem LLM, sem rede)."""
 from agentic_rag.pdf import evaluator, extract_agent, indexer, probe, segmenter
 from agentic_rag.pdf.schemas import (
@@ -156,7 +158,7 @@ def test_search_monta_filtro_por_metadado(monkeypatch):
     monkeypatch.setattr(ingest, "embed", lambda xs: np.zeros((len(xs), 3), dtype="float32"))
 
     class _Res:
-        points = []
+        points: ClassVar[list] = []
 
     class _Cli:
         def __init__(self):

@@ -9,9 +9,12 @@ Dependencia: PyMuPDF (`pip install pymupdf`). Import preguicoso (pesado p/ subir
 """
 from __future__ import annotations
 
+import logging
 from collections import Counter
 
 from agentic_rag.pdf.schemas import Block, DocProfile, LayoutSignals
+
+logger = logging.getLogger(__name__)
 
 _BOLD_FLAG = 1 << 4  # bit de negrito nos span["flags"] do PyMuPDF
 
@@ -58,7 +61,8 @@ def _page_tables(page) -> list[tuple[tuple, str]]:
             if text.strip():
                 out.append((tuple(t.bbox), text))
     except Exception:
-        pass
+        # Degradacao graciosa: sem tabelas o perfil ainda e util. Logamos p/ nao sumir em silencio.
+        logger.debug("extracao de tabelas falhou; seguindo sem tabelas", exc_info=True)
     return out
 
 
@@ -110,7 +114,8 @@ def _count_tables(path: str) -> int:
             try:
                 n += len(page.find_tables().tables)
             except Exception:
-                pass  # versao sem find_tables: tabelas ficam como 0 (heuristica degrada graciosamente)
+                # tabelas ficam como 0: a heuristica degrada graciosamente
+                logger.debug("contagem de tabelas indisponivel nesta pagina", exc_info=True)
     finally:
         doc.close()
     return n

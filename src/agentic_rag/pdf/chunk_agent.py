@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from agentic_rag.config import settings
 from agentic_rag.pdf import evaluator, probe, segmenter
-from agentic_rag.pdf.schemas import ChunkResult, CutPlan, DocProfile, ChunkEval
+from agentic_rag.pdf.schemas import ChunkEval, ChunkResult, CutPlan, DocProfile
 
 
 def _initial_plan(profile: DocProfile) -> CutPlan:

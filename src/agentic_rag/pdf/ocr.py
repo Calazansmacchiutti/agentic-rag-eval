@@ -8,7 +8,11 @@ Dependencias: `pytesseract` + `pillow` (extra `ocr` no pyproject) MAIS o binario
 """
 from __future__ import annotations
 
+import logging
+
 from agentic_rag.pdf.schemas import Block
+
+logger = logging.getLogger(__name__)
 
 
 def available() -> bool:
@@ -19,6 +23,7 @@ def available() -> bool:
         pytesseract.get_tesseract_version()
         return True
     except Exception:
+        logger.debug("Tesseract indisponivel; OCR desligado", exc_info=True)
         return False
 
 

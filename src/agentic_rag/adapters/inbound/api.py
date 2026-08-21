@@ -59,7 +59,7 @@ def health() -> dict:
 
 
 @router.post("/perguntar", response_model=RespostaOut)
-def perguntar(entrada: PerguntaIn, s: Servicos = Depends(obter_servicos)) -> RespostaOut:  # noqa: B008 (Depends em default e o idioma do FastAPI)
+def perguntar(entrada: PerguntaIn, s: Servicos = Depends(obter_servicos)) -> RespostaOut:
     """Responde com fundamentacao auditavel; recusa explicitamente quando falta lastro."""
     resultado = uc.responder(
         entrada.pergunta,
@@ -94,7 +94,7 @@ def perguntar(entrada: PerguntaIn, s: Servicos = Depends(obter_servicos)) -> Res
 def auditoria(
     usuario: str | None = Query(default=None, description="Filtra por usuario."),
     limite: int = Query(default=50, ge=1, le=1000),
-    s: Servicos = Depends(obter_servicos),  # noqa: B008 (idioma do FastAPI)
+    s: Servicos = Depends(obter_servicos),
 ) -> list[dict]:
     """Trilha das respostas ja dadas. Em producao isto fica atras de autenticacao."""
     return s.auditoria.listar(usuario=usuario, limite=limite)
